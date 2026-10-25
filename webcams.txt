@@ -1,0 +1,214 @@
+# Webcam-Liste für webcam-download.sh
+#
+# Format (durch Leerzeichen/Tabs getrennt):
+#   name   quelle   Anzeigetitel (optional, darf Leerzeichen enthalten)
+#
+# name    → Dateiname ohne Endung: nur a-z, 0-9, "-" und "_" (keine Umlaute).
+#           Die Endung (.jpg/.png/…) wird anhand des Bildinhalts gesetzt.
+# quelle  → URL eines Bildes, oder mit Präfix:
+#             html:URL   Webseite laden und das erste Webcam-JPG darin verwenden
+#             mjpeg:URL  ein Einzelbild aus einem MJPEG-Videostream holen (ffmpeg)
+#           Platzhalter in der URL: {utc:FORMAT} bzw. {lokal:FORMAT} werden mit
+#           `date +FORMAT` ersetzt, z. B. {utc:%H} → aktuelle UTC-Stunde.
+#
+# Zeilen mit # am Anfang sind Kommentare. Zum Deaktivieren einfach auskommentieren.
+#
+# feratel-XXXX: Standort ist aus der URL nicht ersichtlich – bei Bedarf umbenennen.
+
+# --- Thüringen -----------------------------------------------------------------
+erfurt-fischmarkt              https://www.erfurt.de/webcam/fischmarkt.jpg                                   Erfurt – Fischmarkt
+erfurt-domplatz                http://www.erfurt.de/webcam/domplatz.jpg                                      Erfurt – Domplatz
+weimar-markt                   http://webcam-markt.belvedere-express.de/image.jpg                            Weimar – Markt
+oberhof-wintersportzentrum     https://www.webcam-profi.de/bilder/wintersportzentrum/oberhof/rsbo/cam1/image.jpg  Oberhof – Wintersportzentrum
+oberhof-schmiechen             https://webcam.oberhof.de/var/www/share/webcam.oberhof.de/htdocs/schmiechen.jpg     Oberhof – Schmiechen
+rennsteigbahn                  https://webcam.rennsteigbahn.de/webcam.jpg                                    Rennsteigbahn
+masserberg-rathaus             https://masserberg.de/images/webcams/rathauscam.jpg                           Masserberg – Rathaus
+meiningen                      https://webcam-meiningen.de/webcam/wcm.jpg                                    Meiningen
+sonneberg                      https://sonneberg.de/webcam/webcamson/webcam.jpg                              Sonneberg
+altenburg                      https://www.altenburg.eu//WebCam1/axis-cgi/jpg/image.cgi                      Altenburg
+bad-koestritz-stadtbad         https://www.stadtbadkoestritz.de/wp-content/kamera/webcam.jpg                 Bad Köstritz – Stadtbad
+neuhaus-wbf                    https://www.wbf-neuhaus.de/images/Webcam/Cam1/current.jpg                     Neuhaus am Rennweg
+lauscha-1                      https://webcam-lauscha.de/bild/gollobild.jpg                                  Lauscha 1
+lauscha-2                      https://webcam-lauscha.de/bild/gollobild3.jpg                                 Lauscha 2
+lauscha-3                      https://webcam-lauscha.de/bild/gollobild7.jpg                                 Lauscha 3
+lauscha-4                      https://webcam-lauscha.de/bild/gollobild11.jpg                                Lauscha 4
+lauscha-panorama               https://webcam-lauscha.de/bild/gollobild180.jpg                               Lauscha – Panorama
+
+# --- Erzgebirge / Sachsen ------------------------------------------------------
+annaberg-erzhammer             https://apache01.annaberg-buchholz.de/kamera/erzhammer.jpg                    Annaberg-Buchholz – Erzhammer
+annaberg-rathaus               https://apache01.annaberg-buchholz.de/kamera/rathaus.jpg                      Annaberg-Buchholz – Rathaus
+annaberg-webmobil              https://www2.annaberg-buchholz.de/webmobil/Mobil.jpg                          Annaberg-Buchholz – Webmobil
+gornsdorf-wetterblick          https://www.erzgebirgswetter.de/webcam/gornsdorf_wetterblick.jpg              Gornsdorf – Wetterblick
+schneeberg-darc                https://www.darc-mak.de/files/Webcam/Schneeberg/camliveSB.jpg                 Schneeberg
+hainichen-rathaus              https://www.hainichen.de/webcam/webcam-rh.jpg                                 Hainichen – Rathaus
+hainichen-rathaus-2            https://www.hainichen.de/webcam/rh2000M.jpg                                   Hainichen – Rathaus 2
+klingenthal-vogtland-arena     https://sparkasse-vogtland-arena.de/webcam/webcam.jpg                         Klingenthal – Vogtland Arena
+muehlleithen-skihang           https://skihang-muehlleithen.de/webcam/webcam.jpg                             Mühlleithen – Skihang
+eibenstock                     https://webcam.eibenstock.de/webcam/bild.jpg                                  Eibenstock
+geisingberg                    https://www.geisingberg.de/webcam/ispy.jpg                                    Geisingberg
+baerenstein                    https://webcam.baerenstein.de/current.jpg                                     Bärenstein
+grimma-markt                   https://webcam-grimma.nolis-manager.de/marktcam.jpg                           Grimma – Markt
+fichtelbergbahn                https://www.fichtelbergbahn.de/webcam/sdg_cam1.jpg                            Fichtelbergbahn
+fichtelberg-gipfel             https://www.fichtelberg-ski.de/fileadmin/user_upload/webcam/fichtelberg.jpg   Fichtelberg – Gipfel
+fichtelberg-talstation         https://www.fichtelberg-ski.de/fileadmin/user_upload/webcam/talstation.jpg    Fichtelberg – Talstation
+goerlitz-obermarkt             https://www.goerlitz.de/webcams/obermarkt.jpg                                 Görlitz – Obermarkt
+goerlitz-altstadtbruecke       https://www.goerlitz.de/webcamsab/altstadtbruecke-zgorzelec.jpg               Görlitz – Altstadtbrücke
+oelsnitz                       https://webcam.oelsnitz.de/Bild_1.jpg                                         Oelsnitz
+auerbach-wetter                http://www.auerbach-wetter.de/0.jpg                                           Auerbach
+olbernhau                      https://system.foto-webcam-erzgebirge.de/webcam/olbernhau/current/1200.jpg    Olbernhau
+olbernhau-stadtkirche          https://webcam001.olbernhau.de/MOBOTIX_Stadtkirche/MOBOTIX_Stadtkirche.jpg    Olbernhau – Stadtkirche
+olbernhau-saigerhuette         https://webcam002.olbernhau.de/MOBOTIX_Saigerhuette/MOBOTIX_Saigerhuette.jpg  Olbernhau – Saigerhütte
+seiffen                        https://system.foto-webcam-erzgebirge.de/webcam/seiffen/current/1200.jpg      Seiffen
+seiffen-ortsmitte              https://seiffen.de/wp-content/uploads/webcam/webcam/current00.jpg             Seiffen – Ortsmitte
+seiffen-kamera-1               http://www.webcam-seiffen.de/images/Webcam_Seiffen_Kamera_Nr1.jpg             Seiffen – Kamera 1
+seiffen-kamera-2               http://www.webcam-seiffen.de/images/Webcam_Seiffen_Kamera_Nr2.jpg             Seiffen – Kamera 2
+geyer-wachtturm                https://webcam.stadt-geyer.de/wachtturm/wachtturm213.jpg                      Geyer – Wachtturm
+koenigstein-festung            https://webcam.festung-koenigstein.de/bruecke/current/live_kl.jpg             Festung Königstein
+saechsische-schweiz            https://www.webcam-saechsische-schweiz.de/webcam/elbsandsteingebirge5/vga_640.jpg  Sächsische Schweiz
+leisnig-markt                  https://style-dach.de/webcam_projekte/Webcam_Leisnig_Markt/FI9900EP_C4D65540F409/snap/webcam.jpg  Leisnig – Markt
+style-dach-alex                https://style-dach.de/webcam_projekte/Webcam_Alex/FI9803P_00626E6462E3/snap/webcam.jpg  Style-Dach – Webcam Alex
+frauenstein                    https://webcam.frauenstein-erzgebirge.de/current.jpg                          Frauenstein
+dresden-elbe                   https://pss.wsv.de/wsadd/dresden.jpg                                          Dresden – Elbe
+zittau-vorstadtbahnhof         https://www.zittauer-schmalspurbahn.de/webcam/picvorstadtbahnhof/image.jpg   Zittau – Vorstadtbahnhof
+# Achtung: Dateiname enthält eine feste Uhrzeit – vermutlich veraltet, ggf. prüfen
+bertsdorf-bahnhof              https://www.zittauer-schmalspurbahn.de/webcam/picbertsdorf/Still/073003_SNCPeriodic.jpg  Bertsdorf – Bahnhof
+rosswein-markt                 https://www.rosswein.de/wp-content/uploads/webcam01/markt.jpg                 Roßwein – Markt
+zwickau                        https://www.zwickau.de/extern/webcam/current.jpg                              Zwickau
+chemnitz-markt                 https://webcam-image.juwelier-roller.de/chemnitz_markt.jpg                    Chemnitz – Markt
+zschopau                       https://www.datase.de/webcam-zschopau/datase-webcam-zschopau.jpg              Zschopau
+oederan                        https://www.oederan.de/webcam2017/video.jpg                                   Oederan
+augustusburg-schloss           http://www.augustusburg.org/webcam/schloss-augustusburg/Erzgebirge-Schloss-Augustusburg.jpg  Schloss Augustusburg
+freiberg-wetterstation         https://www.wetterstation-freiberg.de/webcam/webcam.php                       Freiberg – Wetterstation
+marienberg                     https://www.marienberg-sachsen.de/webcam/webcam-marienberg.php                Marienberg
+gnandstein                     https://www.gnandstein.de/webcam/                                             Gnandstein
+brueckner-computer             https://www.brueckner-computer.de/video//image00001.jpg                       Brückner Computer
+sei-gmbh-cam38                 https://sei-gmbh.de/wp-content/webcams/images/cam_38.jpg                      SEI GmbH – Kamera 38
+lutz-hauptmann                 http://www.lutz-hauptmann.net/webcam/bild.jpg                                 Webcam Lutz Hauptmann
+urologie-pro                   https://urologie.pro/wp-content/uploads/webcam/current.jpg                    Urologie.pro
+sportalbert                    https://www.sportalbert.de/webcam/webcam.jpg                                  Sport Albert
+langfristwetter                http://www.langfristwetter.com/webcam32.jpeg                                  Langfristwetter
+hearthis                       https://images.hearthis.at/webcam.jpg                                         hearthis.at
+
+# --- Bayern -------------------------------------------------------------------
+muenchen-ludwigbeck            https://www.ludwigbeck.de/media/webcam/webcam.jpg                             München – Ludwig Beck
+muenchen-deutsches-museum      https://terra-hd.de/deutschesmuseum3/img/current/1200.jpg                     München – Deutsches Museum
+muenchen-olympiapark           https://www.foto-webcam.eu/webcam/tum-olympiapark/current/1200.jpg            München – Olympiapark
+pullach                        https://terra-hd.de/pullach/img/current/1200.jpg                              Pullach
+traunstein                     https://terra-hd.de/traunstein/img/current/1200.jpg                           Traunstein
+chiemsee                       https://terra-hd.de/chiemsee/img/current/1200.jpg                             Chiemsee
+prien-prienavera               https://terra-hd.de/prienavera/img/current/1200.jpg                           Prien – Prienavera
+wasserburg                     https://www.terra-hd.de/wasserburg/img/current/1200.jpg                       Wasserburg am Inn
+rosenheim                      https://www.foto-webcam.eu/webcam/rosenheim/current/1200.jpg                  Rosenheim
+kampenwand                     https://www.foto-webcam.eu/webcam/kampenwand/current/1200.jpg                 Kampenwand
+aschau-schoedling              http://www.bayernwebcam.de/aschauer_neu/schoedling/webcambild.jpg             Aschau – Schödling
+zugspitze                      https://www.foto-webcam.eu/webcam/zugspitze/current/1200.jpg                  Zugspitze
+zugspitze-nord                 https://www.foto-webcam.eu/webcam/zugspitze-nord/current/1200.jpg             Zugspitze – Nord
+zugspitzbahn-tal               https://www.foto-webcam.eu/webcam/bzb-tal/current/1200.jpg                    Zugspitzbahn – Talstation
+dwd-zugspitze-schneefernerhaus https://www.dwd.de/DWD/wetter/aktuell/deutschland/webcam/webcam_sfh.jpg       DWD – Schneefernerhaus Zugspitze
+dwd-hohenpeissenberg           https://www.dwd.de/DWD/wetter/aktuell/deutschland/webcam/wkam1-10962-o.jpg    DWD – Hohenpeißenberg
+ramsau-kirche                  https://www.ramsau.de/webcam/ramsau-kirche.jpg                                Ramsau – Kirche
+jenner-sued                    https://www.foto-webcam.eu/webcam/jenner-sued/current/1200.jpg                Jenner – Süd
+freya                          https://www.foto-webcam.eu/webcam/freya1/current/1200.jpg                     Freya
+wuerzburg-markt                https://webcam.rockenstein.de/image/wue-markt-1                               Würzburg – Markt
+rothenburg-marktplatz          https://rothenburg-tauber.webcam.inixmedia.de/rothenburg-ob-der-tauber-marktplatz.jpg  Rothenburg o. d. T. – Marktplatz
+bamberg-michelsberg            https://michelsberg-bamberg.contempo-webcam.de/michelsberg.jpg                Bamberg – Michelsberg
+bamberg-untere-muehlen         http://www.bamberg.de/Untere_Muehlen/Untere_Muehlen.jpg                       Bamberg – Untere Mühlen
+herzogenaurach                 https://www.herzogenaurach.de/fileadmin/user_upload/Content/Amt_fuer_Stadtmarketing_und_Kultur/Webcam/Webcam.jpg  Herzogenaurach
+osternohe-skilift              http://www.skilift-osternohe.de/webcam/mobotixweb.jpg                         Osternohe – Skilift
+landshut                       https://www.landshut.de/webcams/lalive_2.jpg                                  Landshut
+dietfurt-freibad               https://webcam3.dietfurt.de/freibad.jpg                                       Dietfurt – Freibad
+monheim                        http://www.monheim-net.de/georg1.jpg                                          Monheim
+koesseine                      https://www.ensedv.de/webcam/koesseine/live/live.jpg                          Kösseine
+ochsenkopf-ostblick            https://webcam.ochsenkopf.info/berg-ostblick.jpg                              Ochsenkopf – Ostblick
+tmt-rathaus                    https://webcam.tmt.de/webcam_rathaus.jpg                                      TMT – Rathaus
+stadtsteinach                  https://stadtsteinach.webcam.tmt.de/webcam/current.jpg                        Stadtsteinach
+kronach-wwa-twt                http://www.wwa-webcams.de/kc/s-twt/s-twt.jpg                                  WWA Kronach – TWT
+kronach-wwa-hrb                http://www.wwa-webcams.de/kc/s-hrb/s-hrb.jpg                                  WWA Kronach – HRB
+sulzbach-rosenberg             http://www.asam-live.de/webcam/stadtsuro1/current/full.jpg                    Sulzbach-Rosenberg
+grenzland                      http://www.asam-live.de/webcam/grenzland1/current/full.jpg                    Grenzland
+amberg                         http://www.asam-live.de/webcam/amberg33/current/full.jpg                      Amberg
+weiden                         html:https://www.webcam.weiden.de/viewer.php?cam=img3                         Weiden
+parkstein                      https://webcam.nix-wie-weg.de/webcam-parkstein.jpg                            Parkstein
+haag-1                         html:https://www.markt-haag.de/webcams/webcam1.php                            Haag 1
+haag-2                         html:https://www.markt-haag.de/webcams/webcam2.php                            Haag 2
+hochstubai                     https://terra-hd.de/hochstubai/img/current/1200.jpg                           Hochstubai
+windbeutelbaron                http://www.foto-webcam.eu/webcam/windbeutelbaron/current/1200.jpg             Windbeutelbaron
+wildwakeski                    http://webcam.wildwakeski.de/webcam_gross.jpg                                 Wild Wake Ski
+regensburg-dom                 mjpeg:https://stream.dom.r-kom.de                                             Regensburg – Dom
+regensburg-steinerne-bruecke   mjpeg:https://stream.steinerne-bruecke.r-kom.de/                              Regensburg – Steinerne Brücke
+regensburg-neupfarrplatz       mjpeg:https://stream.neupfarrplatz.r-kom.de/                                  Regensburg – Neupfarrplatz
+cam-217-119-193-21-06          http://217.119.193.21/webcam/diashow/cam_06_hq.jpg                            Kamera 06
+cam-217-119-193-21-12          http://217.119.193.21/webcam/cam_12/cam_12.jpg                                Kamera 12
+cam-217-119-193-21-17          http://217.119.193.21/webcam/cam_17/cam_17.jpg                                Kamera 17
+cam-217-119-193-21-32          http://217.119.193.21/webcam/cam_32/akt/cam_32_me.jpg                         Kamera 32
+
+# --- Übriges Deutschland --------------------------------------------------------
+berlin-spree                   https://webcam.finanzen.de/spreecam.jpg                                       Berlin – Spree
+berlin-rotes-rathaus           https://www.rbb24.de/include/webcam/rathaus/hugesize_logo.jpg                 Berlin – Rotes Rathaus
+rbb-frz                        https://evo-data.rbb-online.de/frz/webcam/image-frz.jpg                       rbb – FRZ
+halle-evh                      https://swhcam2.evh.de/vhughsize.jpg                                          Halle (Saale)
+brocken                        https://www.hsb-wr.de/out/pictures/webcam/BRO/CAM-PIC-BRO.jpg                 Brocken
+hsb-drei-annen-hohne           https://www.hsb-wr.de/out/pictures/webcam/DRW/CAM-PIC-DRW.jpg                 Harzer Schmalspurbahnen – DRW
+wernigerode-altora             https://www.hotel-wernigerode-altora.de/fileadmin/Altora/_Bilder/webcam/altora-hsb.jpg  Wernigerode
+ilmenau-fluss                  https://pss.wsv.de/itzbund/webcam/ilmenau.jpg                                 Ilmenau (Fluss)
+norderney                      http://www.foto-webcam.eu/webcam/norderney/current/1200.jpg                   Norderney
+stuttgart-21                   https://webcam-bahnprojekt-stuttgart-ulm.de/S21-Bahndirektion-Sued/S21-Bundesbahndirektion-Sued.jpg  Stuttgart 21
+cam-85-190-176-22              http://85.190.176.22:81/record/current.jpg                                    Kamera 85.190.176.22
+cam-217-24-53-20               http://217.24.53.20/record/current.jpg                                        Kamera 217.24.53.20
+# Greiz – Stream offline (auskommentiert seit picsdownload2.sh)
+#greiz                         mjpeg:http://xova21.ddns3-instar.de/mjpegstream.cgi?-chn=11&-usr=guest&pwd=guest  Greiz
+
+# --- Ausland -------------------------------------------------------------------
+cheb                           https://web.cheb.cz/webcam/foto/shot.jpg                                      Cheb (Eger)
+strakonice-09                  http://www.strakonice.eu/images/kamera/09.jpg                                 Strakonice 9
+strakonice-10                  http://www.strakonice.eu/images/kamera/10.jpg                                 Strakonice 10
+strakonice-11                  http://www.strakonice.eu/images/kamera/11.jpg                                 Strakonice 11
+trondheim-cam145-1             http://tsftp.no/Trondheim/cam145_1_image.jpg                                  Trondheim 145/1
+trondheim-cam145-4             http://tsftp.no/Trondheim/cam145_4_image.jpg                                  Trondheim 145/4
+trondheim-cam63-1              https://tsftp.no/Trondheim/cam63_1.jpg                                        Trondheim 63/1
+trondheim-ork-8                http://tsftp.no/Trondheim/ork_8.jpg                                           Trondheim ORK 8
+trondheim-k13-30               http://tsftp.no/Trondheim/k13_30.jpg                                          Trondheim K13/30
+vaesteras                      http://liveevent.se/vasteras/vasteras_1_1280.jpg                              Västerås
+spitzbergen-zeppelin           https://data.npolar.no/_file/zeppelin/camera/Latest/zeppCam2.jpg              Spitzbergen – Zeppelin-Observatorium
+niagara-faelle                 https://www.niagarafallshotels.com/webcam-images/falls/fallscam-still.jpg     Niagarafälle
+ottawa-parlament               https://www.tpsgc-pwgsc.gc.ca/citeparlementaire-parliamentaryprecinct/newhillcam.jpg  Ottawa – Parlamentshügel
+eso-observatorium              https://www.eso.org/public/archives/static/pano/latest/POI/preset_100.jpg     ESO-Observatorium, Chile
+# Neumayer-Station: Bild der aktuellen UTC-Stunde (z. B. neumayerW.1400.jpg)
+neumayer-antarktis             https://www.awi.de/NM_WebCam/neumayerW.{utc:%H}00.jpg                         Neumayer-Station III, Antarktis
+# Statische Thumbnail-URL – ggf. prüfen, ob noch aktuell
+wettercom-webcam               https://cs3.wettercomassets.com/thumbnails/variants/53c90c51d89d9/700_394.jpg wetter.com Webcam
+
+# --- Feratel (Standort unbekannt – bitte bei Gelegenheit sinnvoll benennen) ---
+feratel-3007                   https://wtvpict.feratel.com/picture/35/3007.jpeg                              Feratel 3007
+feratel-3015                   https://wtvpict.feratel.com/picture/35/3015.jpeg                              Feratel 3015
+feratel-3017                   https://wtvpict.feratel.com/picture/35/3017.jpeg                              Feratel 3017
+feratel-3020                   https://wtvpict.feratel.com/picture/35/3020.jpeg                              Feratel 3020
+feratel-3045                   https://wtvpict.feratel.com/picture/35/3045.jpeg                              Feratel 3045
+feratel-3046                   https://wtvpict.feratel.com/picture/35/3046.jpeg                              Feratel 3046
+feratel-3066                   https://wtvpict.feratel.com/picture/35/3066.jpeg                              Feratel 3066
+feratel-3068                   https://wtvpict.feratel.com/picture/35/3068.jpeg                              Feratel 3068
+feratel-3157                   https://wtvpict.feratel.com/picture/35/3157.jpeg                              Feratel 3157
+feratel-3172                   https://wtvpict.feratel.com/picture/35/3172.jpeg                              Feratel 3172
+feratel-3177                   https://wtvpict.feratel.com/picture/35/3177.jpeg                              Feratel 3177
+feratel-3187                   https://wtvpict.feratel.com/picture/35/3187.jpeg                              Feratel 3187
+feratel-3275                   https://wtvpict.feratel.com/picture/35/3275.jpeg                              Feratel 3275
+feratel-3325                   https://wtvpict.feratel.com/picture/35/3325.jpeg                              Feratel 3325
+feratel-3355                   https://wtvpict.feratel.com/picture/35/3355.jpeg                              Feratel 3355
+feratel-3365                   https://wtvpict.feratel.com/picture/35/3365.jpeg                              Feratel 3365
+feratel-3385                   https://wtvpict.feratel.com/picture/35/3385.jpeg                              Feratel 3385
+feratel-3387                   https://wtvpict.feratel.com/picture/35/3387.jpeg                              Feratel 3387
+feratel-3388                   https://wtvpict.feratel.com/picture/35/3388.jpeg                              Feratel 3388
+feratel-3395                   https://wtvpict.feratel.com/picture/35/3395.jpeg                              Feratel 3395
+feratel-3407                   https://wtvpict.feratel.com/picture/35/3407.jpeg                              Feratel 3407
+feratel-3412                   https://wtvpict.feratel.com/picture/35/3412.jpeg                              Feratel 3412
+feratel-5281                   https://wtvpict.feratel.com/picture/35/5281.jpeg                              Feratel 5281
+webcam-profi-1733              https://portal1733.webcam-profi.de/cam1/image.jpg                             Webcam-Profi 1733
+
+# --- Wetterkarten ---------------------------------------------------------------
+dwd-wetterkarte                https://www.dwd.de/DWD/wetter/aktuell/deutschland/bilder/wx_deutschland.jpg   DWD – Aktuelles Wetter
+dwd-vorhersage                 https://www.dwd.de/DWD/wetter/wv_allg/deutschland/film/vhs_deutschland.jpg    DWD – Vorhersage
+dwd-trend                      https://www.dwd.de/DWD/wetter/wv_allg/deutschland/film/trendpic.jpg           DWD – Trend
+dwd-radar                      https://www.dwd.de/DWD/wetter/radar/rad_brd_akt.jpg                           DWD – Niederschlagsradar
+dwd-pollenflug                 https://www.dwd.de/DWD/warnungen/medizin/pollen/pollen_1_3.png                DWD – Pollenflug
+wetterbote-satellit            http://www.wetterbote.de/satellitenbilder/bilder/sateur_g.jpg                 Satellitenbild Europa
+wetterbote-grosswetterlage     http://www.wetterbote.de/pictures/grosswetterlage/aktuell/Europa-600.jpg      Großwetterlage Europa
