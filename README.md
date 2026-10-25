@@ -17,7 +17,9 @@ cd /var/www/html/webcam
 # index.php, webcam-download.sh und webcams.txt hierher kopieren
 chmod +x webcam-download.sh
 mkdir -p bilder
-touch favorites.txt && chown www-data: favorites.txt  # PHP muss Favoriten schreiben dürfen
+touch favorites.txt                                   # PHP muss Favoriten schreiben dürfen:
+sudo chown www-data: favorites.txt                    #   mit Root-Rechten
+# chmod 666 favorites.txt                             #   oder ohne sudo
 ./webcam-download.sh                                  # erster Lauf, zeigt Fehlerliste
 ```
 
