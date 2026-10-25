@@ -9,6 +9,7 @@ STATUS=${STATUS:-$SKRIPT_VERZ/webcams.status}       # wann lieferte welche Webca
 ZIEL_VERZ=${ZIEL_VERZ:-/var/www/html/webcam/bilder} # hier liest index.php die Bilder
 TIMEOUT=${TIMEOUT:-20}                              # Sekunden pro Download
 MIN_BYTES=${MIN_BYTES:-2000}                        # kleinere Dateien gelten als defekt
+MAX_ALTER_MIN=${MAX_ALTER_MIN:-1440}                # ältere Aufnahmen gelten als veraltet (24 h)
 # Aktueller Firefox (ESR). Manche Server (z. B. Holzhau, Zittau) liefern ohne
 # Browser-Kennung nichts aus. Bei Bedarf auf eine aktuelle Version anheben.
 USER_AGENT=${USER_AGENT:-"Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0"}
@@ -21,7 +22,8 @@ herkunft() { # "https://host:port" einer URL
 }
 
 lade() { # url ziel   (ziel "-" = stdout)
-    curl --fail --silent --location --compressed \
+    # --remote-time: Dateidatum = "Last-Modified" des Servers (falls gesendet)
+    curl --fail --silent --location --compressed --remote-time \
          --connect-timeout 10 --max-time "$TIMEOUT" --retry 1 --retry-delay 2 \
          --user-agent "$USER_AGENT" \
          --header "Accept: image/jpeg,image/png,image/*;q=0.8,*/*;q=0.5" \
@@ -107,6 +109,28 @@ pruefe_bild() { # datei → gibt Endung aus (rc 0) oder den Grund der Ablehnung 
         return 1
     fi
     echo "$2"
+}
+
+# Wann wurde das Bild aufgenommen? Ausgabe: "unixzeit quelle"
+#   quelle = server (Last-Modified, per curl --remote-time als Dateidatum gesetzt),
+#            exif (Aufnahmedatum im Bild) oder keine (dann gilt der Download-Zeitpunkt)
+aufnahmezeit() { # datei download-start
+    local zeit quelle=server exif jetzt
+    jetzt=$(date +%s)
+    zeit=$(stat -c %Y "$1")
+    if (( zeit >= $2 - 1 )); then          # Dateidatum = Downloadzeit → Server sendet kein Datum
+        quelle=keine
+        zeit=$jetzt
+        exif=$(file -b "$1" | grep -oE 'datetime=[0-9]{4}:[0-9]{2}:[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}' | head -n 1)
+        if [[ -n $exif ]]; then
+            exif=${exif#datetime=}
+            if exif=$(date -d "${exif:0:4}-${exif:5:2}-${exif:8:2} ${exif:11}" +%s 2>/dev/null); then
+                zeit=$exif quelle=exif
+            fi
+        fi
+    fi
+    (( zeit > jetzt )) && zeit=$jetzt      # Uhren in der Zukunft kappen
+    echo "$zeit $quelle"
 }
 
 installiere_bild() { # tmpdatei name endung → atomar nach ZIEL_VERZ, alte Endungen weg

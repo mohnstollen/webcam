@@ -26,42 +26,63 @@ SKRIPT_VERZ=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SKRIPT_VERZ/webcam-funktionen.sh"
 
 PARALLEL=${PARALLEL:-8}                             # gleichzeitige Downloads
-MAX_ALTER_MIN=${MAX_ALTER_MIN:-1440}                # ältere Bilder werden entfernt (24 h)
 
 # ------------------------------------------------------------------------------
 
-melde() { # status name [grund url]
-    printf '%s\t%s\t%s\t%s\n' "$1" "$2" "${3:-}" "${4:-}" >> "$ARBEIT/ergebnis"
+melde() { # status name aufnahmezeit [grund url]
+    # Zeit vor den optionalen Feldern: read mit IFS=Tab fasst leere Felder zusammen
+    printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "${4:-}" "${5:-}" >> "$ARBEIT/ergebnis"
 }
 
 hole_bild() { # name quelle
-    local name=$1 typ url rc endung
+    local name=$1 typ url rc endung start zeit herkunft ziel ref
     local tmp="$ARBEIT/$name.tmp"
     read -r typ url < <(zerlege_quelle "$2")
+    start=$(date +%s)
 
     beschaffe "$typ" "$url" "$tmp"
     rc=$?
     if (( rc != 0 )) || [[ ! -s $tmp ]]; then
         (( rc == 0 )) && rc=22
-        melde FEHLER "$name" "$(curl_fehler "$rc")" "$url"
+        melde FEHLER "$name" 0 "$(curl_fehler "$rc")" "$url"
         return
     fi
     if ! endung=$(pruefe_bild "$tmp"); then
-        melde FEHLER "$name" "$endung" "$url"
+        melde FEHLER "$name" 0 "$endung" "$url"
         return
     fi
-    if [[ -f $ZIEL_VERZ/$name.$endung ]] && cmp -s "$tmp" "$ZIEL_VERZ/$name.$endung"; then
-        melde GLEICH "$name"   # Zeitstempel bleibt → Alter der Aufnahme bleibt sichtbar
+    ziel="$ZIEL_VERZ/$name.$endung"
+    if [[ -f $ziel ]] && cmp -s "$tmp" "$ziel"; then
+        # Zeitstempel bleibt → Alter der Aufnahme bleibt sichtbar, nach MAX_ALTER_MIN fliegt es raus
+        melde GLEICH "$name" "$(stat -c %Y "$ziel")"
         return
     fi
+
+    # Veraltete Aufnahme (Server-Datum bzw. EXIF)? Dann nicht in die Slideshow –
+    # außer das Bild hat sich seit dem letzten Lauf geändert: dann lebt die Kamera
+    # und nur ihr Datum ist falsch.
+    read -r zeit herkunft < <(aufnahmezeit "$tmp" "$start")
+    if (( zeit < start - MAX_ALTER_MIN * 60 )); then
+        ref="$ZIEL_VERZ/.veraltet/$name.$endung"
+        if [[ -f $ziel ]] || { [[ -f $ref ]] && ! cmp -s "$tmp" "$ref"; }; then
+            zeit=$start
+        else
+            mkdir -p "$ZIEL_VERZ/.veraltet"
+            mv -f "$tmp" "$ref" && touch "$ref"   # Vergleichsbild für den nächsten Lauf
+            melde ALT "$name" "$zeit" "veraltet: Aufnahme vom $(date -d "@$zeit" '+%d.%m.%Y %H:%M') ($herkunft)" "$url"
+            return
+        fi
+    fi
+    touch -d "@$zeit" "$tmp"
     installiere_bild "$tmp" "$name" "$endung"
-    melde OK "$name"
+    rm -f "$ZIEL_VERZ/.veraltet/$name".*
+    melde OK "$name" "$zeit"
 }
 
-# webcams.status: name, erstmals gesehen, zuletzt erreichbar, zuletzt neues Bild
-# (jeweils Unix-Zeit, 0 = nie), letzte Meldung – tabgetrennt
+# webcams.status: name, erstmals gesehen, zuletzt erreichbar, Aufnahmezeit des
+# neuesten Bildes (jeweils Unix-Zeit, 0 = nie), letzte Meldung – tabgetrennt
 aktualisiere_status() {
-    local jetzt n e o u f st grund
+    local jetzt n e o u f st grund zeit
     declare -A erst=() ok=() neu=() info=()
     jetzt=$(date +%s)
     if [[ -r $STATUS ]]; then
@@ -69,12 +90,14 @@ aktualisiere_status() {
             erst[$n]=$e ok[$n]=$o neu[$n]=$u info[$n]=$f
         done < "$STATUS"
     fi
-    while IFS=$'\t' read -r st n grund _; do
+    while IFS=$'\t' read -r st n zeit grund _; do
         case $st in
-            OK)     ok[$n]=$jetzt neu[$n]=$jetzt info[$n]= ;;
+            OK)     ok[$n]=$jetzt neu[$n]=$zeit info[$n]= ;;
             GLEICH) ok[$n]=$jetzt info[$n]="Bild unverändert"
-                    # Bild kam von außerhalb (z. B. "webcam-verwalten.sh neu") → zählt als neu
-                    [[ ${neu[$n]:-0} == 0 ]] && neu[$n]=$jetzt ;;
+                    # Bild kam von außerhalb (z. B. "webcam-verwalten.sh neu")
+                    [[ ${neu[$n]:-0} == 0 ]] && neu[$n]=$zeit ;;
+            ALT)    ok[$n]=$jetzt info[$n]=$grund
+                    (( zeit > ${neu[$n]:-0} )) && neu[$n]=$zeit ;;
             FEHLER) info[$n]=$grund ;;
         esac
     done < "$ARBEIT/ergebnis"
@@ -142,9 +165,12 @@ for datei in "$ZIEL_VERZ"/*; do
         rm -f "$datei" && echo "Entfernt (nicht mehr in der Liste): $basis"
     fi
 done
+# Vergleichsbilder veralteter Webcams, die eine Woche nicht mehr gesehen wurden
+[[ -d $ZIEL_VERZ/.veraltet ]] && find "$ZIEL_VERZ/.veraltet" -type f -mtime +7 -delete
 
 ok=$(grep -c '^OK' "$ARBEIT/ergebnis")
 gleich=$(grep -c '^GLEICH' "$ARBEIT/ergebnis")
+veraltet=$(grep -c '^ALT' "$ARBEIT/ergebnis")
 fehler=$(grep -c '^FEHLER' "$ARBEIT/ergebnis")
 
 # … und veraltete Bilder – aber nur, wenn überhaupt etwas geklappt hat
@@ -155,8 +181,11 @@ if (( ok + gleich > 0 )); then
          -mmin +"$MAX_ALTER_MIN" -print -delete | sed 's|.*/|Entfernt (veraltet): |'
 fi
 
-echo "$(date '+%F %T')  $anzahl Webcams: $ok aktualisiert, $gleich unverändert, $fehler Fehler"
-sort -t $'\t' -k2,2 "$ARBEIT/ergebnis" | while IFS=$'\t' read -r status name grund url; do
-    [[ $status == FEHLER ]] && printf '  FEHLER  %-30s %-28s %s\n' "$name" "$grund" "$url"
+echo "$(date '+%F %T')  $anzahl Webcams: $ok aktualisiert, $gleich unverändert, $veraltet veraltet, $fehler Fehler"
+sort -t $'\t' -k2,2 "$ARBEIT/ergebnis" | while IFS=$'\t' read -r status name _ grund url; do
+    case $status in
+        FEHLER) printf '  FEHLER    %-30s %-28s %s\n' "$name" "$grund" "$url" ;;
+        ALT)    printf '  VERALTET  %-30s %s\n' "$name" "${grund#veraltet: }" ;;
+    esac
 done
 exit 0

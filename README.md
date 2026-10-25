@@ -55,6 +55,18 @@ zurückholen. Vor jeder Änderung wird `webcams.txt.bak` angelegt.
 Download-Lauf), sowie tote **und** eingefrorene Webcams, die seit X Tagen kein neues
 Bild gebracht haben (`defekt 7` für eine Woche).
 
+### Veraltete Bilder
+
+Manche Webcams liefern noch ein Bild, das aber seit Monaten nicht mehr aktualisiert wurde.
+Die Aufnahmezeit wird deshalb bei jedem Download ermittelt – aus dem `Last-Modified`-Datum
+des Servers, ersatzweise aus den EXIF-Daten des Bildes. Ist die Aufnahme älter als 24 Stunden
+(`MAX_ALTER_MIN`), kommt das Bild nicht in die Slideshow und die Webcam steht sofort unter
+`defekt`, z. B. „veraltet: Aufnahme vom 25.06.2026“. Ändert sich das Bild trotz alter
+Zeitangabe zwischen zwei Läufen, geht nur die Uhr der Kamera falsch – dann wird es normal
+angezeigt. In der Slideshow zeigt „Stand“ die echte Aufnahmezeit.
+
+Prüfen, was ein Server meldet: `curl -sI URL | grep -i last-modified`
+
 ## Bedienung
 
 * Tippen rechts / links: nächstes / vorheriges Bild, Wischen ebenso

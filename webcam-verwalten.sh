@@ -22,8 +22,9 @@ Aufruf: $PROG BEFEHL …
 
   test URL                   Download testen, ohne etwas einzutragen
   neu NAME URL [Titel …]     testen und nur bei Erfolg in webcams.txt eintragen
-  defekt [TAGE]              Webcams ohne neues Bild seit TAGE Tagen (Standard: 2)
-                             oder ohne jeden erfolgreichen Download
+  defekt [TAGE]              Webcams, deren neuestes Bild älter als TAGE Tage ist
+                             (Standard: 2), die veraltete Aufnahmen liefern
+                             oder noch nie ein Bild geliefert haben
   aufraeumen [TAGE]          defekte Webcams einzeln durchgehen und entscheiden
   aus NAME …                 ausschalten (Zeile wird mit "#aus DATUM" auskommentiert)
   an NAME …                  ausgeschaltete Webcam wieder einschalten
@@ -70,12 +71,21 @@ diagnose() { # url
     fi
 }
 
-teste() { # quelle → bei Erfolg: Bild in $TEST_BILD, Endung in $TEST_ENDUNG
-    local typ url rc info masse breite bild_url
+alter_text() { # sekunden → "3 Min." / "5 Std." / "122 Tage"
+    if (( $1 < 3600 )); then echo "$(( $1 / 60 )) Min."
+    elif (( $1 < 172800 )); then echo "$(( $1 / 3600 )) Std."
+    else echo "$(( $1 / 86400 )) Tage"; fi
+}
+
+teste() { # quelle → bei Erfolg: Bild in $TEST_BILD, Endung in $TEST_ENDUNG,
+          #           TEST_VERALTET=1, wenn die Aufnahme älter als MAX_ALTER_MIN ist
+    local typ url rc info masse breite bild_url start zeit herkunft
     read -r typ url < <(zerlege_quelle "$1")
     rm -f "${TEST_BILD:-}"
     TEST_BILD=$(mktemp) || exit 1
+    TEST_VERALTET=0
     echo "Teste $url …"
+    start=$(date +%s)
 
     beschaffe "$typ" "$url" "$TEST_BILD"
     rc=$?
@@ -102,6 +112,19 @@ teste() { # quelle → bei Erfolg: Bild in $TEST_BILD, Endung in $TEST_ENDUNG
     if [[ $breite =~ ^[0-9]+$ ]] && (( breite < 640 )); then
         echo "  Hinweis: geringe Auflösung – auf dem Tablet wird das Bild unscharf."
     fi
+
+    read -r zeit herkunft < <(aufnahmezeit "$TEST_BILD" "$start")
+    if [[ $herkunft == keine ]]; then
+        echo "  Aufnahmezeit: unbekannt (Server sendet kein Datum, keine EXIF-Daten)"
+    else
+        [[ $herkunft == server ]] && herkunft="laut Server" || herkunft="laut EXIF-Daten"
+        echo "  Aufnahmezeit: $(date -d "@$zeit" '+%d.%m.%Y %H:%M') – vor $(alter_text $(( start - zeit ))) ($herkunft)"
+        if (( zeit < start - MAX_ALTER_MIN * 60 )); then
+            TEST_VERALTET=1
+            echo "⚠ Das Bild ist veraltet – die Webcam ist vermutlich außer Betrieb."
+            echo "  (Ausnahme: die Uhr der Kamera geht falsch; dann ändert sich das Bild trotzdem.)"
+        fi
+    fi
     return 0
 }
 
@@ -125,6 +148,11 @@ cmd_neu() {
     [[ -n $vorhanden ]] && fehler "Diese URL ist bereits als '$vorhanden' eingetragen."
 
     teste "$quelle" || { echo "Nicht eingetragen."; exit 1; }
+    if (( TEST_VERALTET )); then
+        local antwort
+        read -rp "Trotzdem eintragen? [j/N] " antwort < /dev/tty || antwort=
+        [[ ${antwort,,} == j* ]] || { echo "Nicht eingetragen."; exit 1; }
+    fi
 
     cp -p "$LISTE" "$LISTE.bak"
     [[ -n $(tail -c 1 "$LISTE") ]] && echo >> "$LISTE"
@@ -147,7 +175,7 @@ ermittle_defekte() { # tage → DEFEKTE: "zuletzt_neu<TAB>name<TAB>meldung", äl
     [[ -r $STATUS ]] || fehler "Noch keine Statusdaten ($STATUS) – erst webcam-download.sh laufen lassen."
     mapfile -t DEFEKTE < <(awk -F'\t' -v g="$grenze" '
         NR == FNR { if ($0 !~ /^#/ && NF) { split($0, f, /[ \t]+/); aktiv[f[1]] = 1 }; next }
-        ($1 in aktiv) && ($4 == 0 || ($4 < g && $2 < g)) { print $4 "\t" $1 "\t" $5 }
+        ($1 in aktiv) && $4 < g { print $4 "\t" $1 "\t" $5 }
     ' "$LISTE" "$STATUS" | sort -n)
 }
 
