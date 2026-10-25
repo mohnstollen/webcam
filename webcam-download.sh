@@ -10,109 +10,34 @@
 # Bild nicht (eingefrorene Kamera), wird es nicht neu gestempelt und fällt nach
 # MAX_ALTER_MIN ebenfalls heraus.
 #
+# In webcams.status wird pro Webcam festgehalten, wann sie zuletzt ein neues
+# Bild geliefert hat – Grundlage für "webcam-verwalten.sh defekt".
+#
 # Cron-Beispiel (alle 10 Minuten):
 #   */10 * * * * /var/www/html/webcam/webcam-download.sh >> /var/log/webcam-download.log 2>&1
 #
 # Benötigt: bash >= 4.3, curl, file, flock; ffmpeg nur für mjpeg:-Quellen.
-# Alle Einstellungen unten lassen sich per Umgebungsvariable überschreiben.
+# Einstellungen: webcam-funktionen.sh bzw. hier unten, jeweils per Umgebungsvariable überschreibbar.
 
 set -uo pipefail
 
 SKRIPT_VERZ=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=webcam-funktionen.sh
+source "$SKRIPT_VERZ/webcam-funktionen.sh"
 
-LISTE=${LISTE:-$SKRIPT_VERZ/webcams.txt}            # Liste der Webcams
-ZIEL_VERZ=${ZIEL_VERZ:-/var/www/html/webcam/bilder} # hier liest index.php die Bilder
 PARALLEL=${PARALLEL:-8}                             # gleichzeitige Downloads
-TIMEOUT=${TIMEOUT:-20}                              # Sekunden pro Download
 MAX_ALTER_MIN=${MAX_ALTER_MIN:-1440}                # ältere Bilder werden entfernt (24 h)
-MIN_BYTES=${MIN_BYTES:-2000}                        # kleinere Dateien gelten als defekt
-# Aktueller Firefox (ESR). Manche Server (z. B. Holzhau, Zittau) liefern ohne
-# Browser-Kennung nichts aus. Bei Bedarf auf eine aktuelle Version anheben.
-USER_AGENT=${USER_AGENT:-"Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0"}
-
-BILD_ENDUNGEN=(jpg png gif webp)
 
 # ------------------------------------------------------------------------------
-
-herkunft() { # "https://host:port" einer URL
-    [[ $1 =~ ^(https?://[^/?#]+) ]] && printf '%s' "${BASH_REMATCH[1]}"
-}
-
-lade() { # url ziel   (ziel "-" = stdout)
-    curl --fail --silent --location --compressed \
-         --connect-timeout 10 --max-time "$TIMEOUT" --retry 1 --retry-delay 2 \
-         --user-agent "$USER_AGENT" \
-         --header "Accept: image/jpeg,image/png,image/*;q=0.8,*/*;q=0.5" \
-         --header "Accept-Language: de-DE,de;q=0.9,en;q=0.6" \
-         --referer "$(herkunft "$1")/" \
-         --output "$2" "$1"
-}
-
-curl_fehler() { # Klartext zu den häufigsten curl-Exitcodes
-    case $1 in
-        6)  echo "Host unbekannt" ;;
-        7)  echo "keine Verbindung" ;;
-        22) echo "HTTP-Fehler (404/403/…)" ;;
-        28) echo "Zeitüberschreitung" ;;
-        35|60) echo "TLS/Zertifikat-Fehler" ;;
-        124) echo "Zeitüberschreitung (Stream)" ;;
-        *)  echo "Fehler $1" ;;
-    esac
-}
-
-ersetze_platzhalter() { # {utc:%H} / {lokal:%Y} → date-Ausgabe
-    local url=$1 re='\{(utc|lokal):([^}]+)\}' ganz zone format wert
-    while [[ $url =~ $re ]]; do
-        ganz=${BASH_REMATCH[0]} zone=${BASH_REMATCH[1]} format=${BASH_REMATCH[2]}
-        if [[ $zone == utc ]]; then wert=$(date -u +"$format"); else wert=$(date +"$format"); fi
-        url=${url//"$ganz"/$wert}
-    done
-    printf '%s' "$url"
-}
-
-finde_bild() { # HTML auf stdin, Seiten-URL als $1 → absolute URL des Webcam-JPGs
-    local seite=$1 kandidaten src basis
-    kandidaten=$(grep -oiE "<img[^>]*src=[\"'][^\"']+" | sed -E "s/.*src=[\"']//I" | grep -iE '\.jpe?g([?#]|$)')
-    src=$(grep -i 'cam' <<<"$kandidaten" | head -n 1)
-    [[ -n $src ]] || src=$(head -n 1 <<<"$kandidaten")
-    [[ -n $src ]] || return 1
-    src=${src//&amp;/&}
-    case $src in
-        http://*|https://*) ;;
-        //*) src="${seite%%:*}:$src" ;;
-        /*)  src="$(herkunft "$seite")$src" ;;
-        *)   basis=${seite%%[?#]*}
-             [[ $basis =~ ^https?://[^/]+/ ]] && basis=${basis%/*}
-             src="$basis/$src" ;;
-    esac
-    printf '%s\n' "$src"
-}
-
-beschaffe() { # typ url ziel
-    local bild_url
-    case $1 in
-        bild)  lade "$2" "$3" ;;
-        html)  bild_url=$(lade "$2" - | finde_bild "$2") || return 22
-               lade "$bild_url" "$3" ;;
-        mjpeg) timeout "$TIMEOUT" ffmpeg -nostdin -hide_banner -loglevel error -y \
-                   -user_agent "$USER_AGENT" -f mjpeg -i "$2" \
-                   -frames:v 1 -q:v 2 -f image2 -update 1 "$3" ;;
-    esac
-}
 
 melde() { # status name [grund url]
     printf '%s\t%s\t%s\t%s\n' "$1" "$2" "${3:-}" "${4:-}" >> "$ARBEIT/ergebnis"
 }
 
 hole_bild() { # name quelle
-    local name=$1 quelle=$2 typ=bild url rc mime endung ziel alt
+    local name=$1 typ url rc endung
     local tmp="$ARBEIT/$name.tmp"
-    case $quelle in
-        mjpeg:*) typ=mjpeg url=${quelle#mjpeg:} ;;
-        html:*)  typ=html  url=${quelle#html:} ;;
-        *)       url=$quelle ;;
-    esac
-    url=$(ersetze_platzhalter "$url")
+    read -r typ url < <(zerlege_quelle "$2")
 
     beschaffe "$typ" "$url" "$tmp"
     rc=$?
@@ -121,31 +46,41 @@ hole_bild() { # name quelle
         melde FEHLER "$name" "$(curl_fehler "$rc")" "$url"
         return
     fi
-
-    mime=$(file -b --mime-type "$tmp")
-    case $mime in
-        image/jpeg) endung=jpg ;;
-        image/png)  endung=png ;;
-        image/gif)  endung=gif ;;
-        image/webp) endung=webp ;;
-        *) melde FEHLER "$name" "kein Bild ($mime)" "$url"; return ;;
-    esac
-    if (( $(stat -c %s "$tmp") < MIN_BYTES )); then
-        melde FEHLER "$name" "Datei zu klein" "$url"
+    if ! endung=$(pruefe_bild "$tmp"); then
+        melde FEHLER "$name" "$endung" "$url"
         return
     fi
-
-    ziel="$ZIEL_VERZ/$name.$endung"
-    if [[ -f $ziel ]] && cmp -s "$tmp" "$ziel"; then
+    if [[ -f $ZIEL_VERZ/$name.$endung ]] && cmp -s "$tmp" "$ZIEL_VERZ/$name.$endung"; then
         melde GLEICH "$name"   # Zeitstempel bleibt → Alter der Aufnahme bleibt sichtbar
         return
     fi
-    chmod 644 "$tmp"
-    mv -f "$tmp" "$ziel"       # atomar: die Slideshow sieht nie ein halbes Bild
-    for alt in "${BILD_ENDUNGEN[@]}"; do
-        [[ $endung != "$alt" ]] && rm -f "$ZIEL_VERZ/$name.$alt"
-    done
+    installiere_bild "$tmp" "$name" "$endung"
     melde OK "$name"
+}
+
+# webcams.status: name, erstmals gesehen, zuletzt erreichbar, zuletzt neues Bild
+# (jeweils Unix-Zeit, 0 = nie), letzte Meldung – tabgetrennt
+aktualisiere_status() {
+    local jetzt n e o u f st grund
+    declare -A erst=() ok=() neu=() info=()
+    jetzt=$(date +%s)
+    if [[ -r $STATUS ]]; then
+        while IFS=$'\t' read -r n e o u f; do
+            erst[$n]=$e ok[$n]=$o neu[$n]=$u info[$n]=$f
+        done < "$STATUS"
+    fi
+    while IFS=$'\t' read -r st n grund _; do
+        case $st in
+            OK)     ok[$n]=$jetzt neu[$n]=$jetzt info[$n]= ;;
+            GLEICH) ok[$n]=$jetzt info[$n]="Bild unverändert"
+                    # Bild kam von außerhalb (z. B. "webcam-verwalten.sh neu") → zählt als neu
+                    [[ ${neu[$n]:-0} == 0 ]] && neu[$n]=$jetzt ;;
+            FEHLER) info[$n]=$grund ;;
+        esac
+    done < "$ARBEIT/ergebnis"
+    for n in "${!IN_LISTE[@]}"; do
+        printf '%s\t%s\t%s\t%s\t%s\n' "$n" "${erst[$n]:-$jetzt}" "${ok[$n]:-0}" "${neu[$n]:-0}" "${info[$n]:-}"
+    done | sort > "$ARBEIT/status" && cat "$ARBEIT/status" > "$STATUS"
 }
 
 # ------------------------------------------------------------------------------
@@ -172,7 +107,7 @@ while IFS= read -r zeile; do
     zeile=${zeile%$'\r'}
     read -r name quelle titel <<<"$zeile"
     [[ -z ${name:-} || $name == \#* ]] && continue
-    if [[ ! $name =~ ^[a-z0-9][a-z0-9_-]*$ || -z ${quelle:-} ]]; then
+    if [[ ! $name =~ $NAME_MUSTER || -z ${quelle:-} ]]; then
         echo "WARNUNG: ungültige Zeile in $(basename "$LISTE"): $zeile"
         continue
     fi
@@ -196,6 +131,7 @@ fi
 
 chmod 644 "$ARBEIT/titel.tsv"
 mv -f "$ARBEIT/titel.tsv" "$ZIEL_VERZ/titel.tsv"
+aktualisiere_status
 
 # Aufräumen: Bilder, die nicht mehr in der Liste stehen
 for datei in "$ZIEL_VERZ"/*; do
