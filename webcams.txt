@@ -1,4 +1,6 @@
-# Webcam-Liste für webcam-download.sh
+# Startliste der Webcams – einmalig importieren mit:
+#   sudo -u www-data php webcam-cli.php import webcams.txt
+# Danach werden die Webcams in der Verwaltung (admin.php) gepflegt.
 #
 # Format (durch Leerzeichen/Tabs getrennt):
 #   name   quelle   Anzeigetitel (optional, darf Leerzeichen enthalten)

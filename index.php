@@ -2,7 +2,7 @@
 /*
  * Webcam-Slideshow für die Tablet-Anzeige (Nachfolger von webcam8.php)
  *
- * Die Bilder lädt webcam-download.sh nach ./bilder/. Die Seite läuft komplett im
+ * Die Bilder lädt webcam-cli.php (Cron) nach ./bilder/. Die Seite läuft komplett im
  * Browser weiter (kein Neuladen pro Bild), holt die Bilderliste regelmäßig neu
  * und merkt sich Reihenfolge und Position im localStorage des Tablets.
  *
@@ -10,81 +10,41 @@
  *             Wischen = zurück/weiter, Tastatur: ← → Leertaste F
  */
 declare(strict_types=1);
+require __DIR__ . '/inc/webcam.php';
 
-const BILD_VERZ        = __DIR__ . '/bilder';
-const BILD_URL         = 'bilder';
-const TITEL_DATEI      = BILD_VERZ . '/titel.tsv';
-const FAV_DATEI        = __DIR__ . '/favorites.txt';
-const BILD_ENDUNGEN    = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-const ANZEIGE_SEKUNDEN = 20;
-
-function titelListe(): array
-{
-    $titel = [];
-    if (is_readable(TITEL_DATEI)) {
-        foreach (file(TITEL_DATEI, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $zeile) {
-            $teile = explode("\t", $zeile, 2);
-            if (count($teile) === 2 && trim($teile[1]) !== '') {
-                $titel[$teile[0]] = trim($teile[1]);
-            }
-        }
-    }
-    return $titel;
-}
-
-function bilderListe(): array
-{
-    if (!is_dir(BILD_VERZ)) {
-        return [];
-    }
-    $titel  = titelListe();
-    $bilder = [];
-    foreach (scandir(BILD_VERZ) ?: [] as $datei) {
-        $pfad = BILD_VERZ . '/' . $datei;
-        if ($datei[0] === '.' || !is_file($pfad)
-            || !in_array(strtolower(pathinfo($datei, PATHINFO_EXTENSION)), BILD_ENDUNGEN, true)) {
-            continue;
-        }
-        $name = pathinfo($datei, PATHINFO_FILENAME);
-        $zeit = (int) filemtime($pfad);
-        $bilder[] = [
-            'datei' => $datei,
-            'titel' => $titel[$name] ?? ucwords(str_replace(['-', '_'], ' ', $name)),
-            'zeit'  => $zeit,
-            // ?v= sorgt dafür, dass das Tablet nie ein veraltetes Bild aus dem Cache zeigt
-            'url'   => BILD_URL . '/' . rawurlencode($datei) . '?v=' . $zeit,
-        ];
-    }
-    return $bilder;
-}
-
-/** Liest die Favoriten; mit $datei wird dieser Eintrag gesetzt ($an) bzw. entfernt. */
-function favoriten(?string $datei = null, bool $an = true): array
-{
-    $fh = @fopen(FAV_DATEI, $datei === null ? 'r' : 'c+');
-    if (!$fh) {
-        return [];
-    }
-    flock($fh, $datei === null ? LOCK_SH : LOCK_EX);
-    $favs = array_values(array_unique(array_filter(array_map('trim', explode("\n", (string) stream_get_contents($fh))))));
-    if ($datei !== null) {
-        $favs = array_values(array_diff($favs, [$datei]));
-        if ($an) {
-            $favs[] = $datei;
-        }
-        ftruncate($fh, 0);
-        rewind($fh);
-        fwrite($fh, $favs ? implode("\n", $favs) . "\n" : '');
-        fflush($fh);
-    }
-    flock($fh, LOCK_UN);
-    fclose($fh);
-    return $favs;
-}
-
+/** Alle aktiven Webcams mit aktuellem Bild, dazu die Favoriten */
 function daten(): array
 {
-    return ['bilder' => bilderListe(), 'favoriten' => favoriten(), 'jetzt' => time()];
+    $bilder = [];
+    $favoriten = [];
+    try {
+        $cams = alleWebcams('aktiv = 1 AND datei IS NOT NULL');
+    } catch (Throwable $e) {
+        $cams = [];                       // Datenbank (noch) nicht eingerichtet → leere Slideshow
+    }
+    foreach ($cams as $c) {
+        $pfad = BILD_VERZ . '/' . $c['datei'];
+        if (!is_file($pfad)) {
+            continue;
+        }
+        $zeit = (int) filemtime($pfad);    // = Aufnahmezeit (vom Download gesetzt)
+        $bilder[] = [
+            'datei' => $c['datei'],
+            'titel' => $c['titel'] !== '' ? $c['titel'] : $c['name'],
+            'zeit'  => $zeit,
+            // ?v= sorgt dafür, dass das Tablet nie ein veraltetes Bild aus dem Cache zeigt
+            'url'   => BILD_URL . '/' . rawurlencode($c['datei']) . '?v=' . $zeit,
+        ];
+        if ($c['favorit']) {
+            $favoriten[] = $c['datei'];
+        }
+    }
+    return ['bilder' => $bilder, 'favoriten' => $favoriten, 'jetzt' => time()];
+}
+
+function favoriten(): array
+{
+    return daten()['favoriten'];
 }
 
 function sendeJson(array $daten): void
@@ -97,13 +57,13 @@ function sendeJson(array $daten): void
 
 // --- API -----------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['favorit'])) {
-    $datei = basename((string) $_POST['favorit']);   // nur Dateiname, kein Pfad
-    $an    = ($_POST['an'] ?? '1') === '1';
-    if ($an && !is_file(BILD_VERZ . '/' . $datei)) {
+    $st = db()->prepare('UPDATE webcams SET favorit = ? WHERE datei = ?');
+    $st->execute([($_POST['an'] ?? '1') === '1' ? 1 : 0, (string) $_POST['favorit']]);
+    if ($st->rowCount() === 0) {
         http_response_code(404);
         sendeJson(['fehler' => 'Bild nicht gefunden']);
     }
-    sendeJson(['favoriten' => favoriten($datei, $an)]);
+    sendeJson(['favoriten' => favoriten()]);
 }
 if (isset($_GET['liste'])) {
     sendeJson(daten());
@@ -220,6 +180,7 @@ header('Cache-Control: no-store');
   <button data-aktion="modus" id="btn-modus"><span>⤢</span>Auto</button>
   <button data-aktion="mischen"><span>🔀</span>Neu mischen</button>
   <button data-aktion="vollbild" id="btn-vollbild"><span>⛶</span>Vollbild</button>
+  <button data-aktion="verwaltung"><span>⚙</span>Verwaltung</button>
 </div>
 
 <script>
@@ -410,7 +371,7 @@ header('Cache-Control: no-store');
     ebenen.forEach(function (e) { e.el.classList.remove('aktiv'); });
     $('titel').textContent = text || (zustand.nurFav
       ? 'Noch keine Favoriten – mit ♥ Merken markieren.'
-      : 'Keine Webcam-Bilder vorhanden. Läuft webcam-download.sh?');
+      : 'Keine Webcam-Bilder vorhanden – siehe ⚙ Verwaltung.');
     $('stand').textContent = '';
     $('zaehler').textContent = '';
   }
@@ -538,7 +499,8 @@ header('Cache-Control: no-store');
         zeige();
       });
     },
-    vollbild: vollbild
+    vollbild: vollbild,
+    verwaltung: function () { location.href = 'admin.php'; }
   };
 
   $('steuerung').addEventListener('click', function (ev) {

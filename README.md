@@ -1,79 +1,119 @@
 # Webcam-Slideshow
 
-Lädt regelmäßig Webcam-Bilder herunter und zeigt sie als Vollbild-Slideshow im Browser eines Tablets.
+Lädt regelmäßig Webcam-Bilder herunter, zeigt sie als Vollbild-Slideshow auf einem Tablet
+und lässt sich komplett im Browser verwalten.
 
-| Datei | Zweck | ersetzt |
-|---|---|---|
-| `webcam-download.sh` | lädt alle Webcams aus `webcams.txt` nach `bilder/` | `picsdownload2.sh` |
-| `webcam-verwalten.sh` | Webcams testen, hinzufügen, abschalten, entfernen | |
-| `webcam-funktionen.sh` | gemeinsame Einstellungen (User-Agent, Pfade) und Funktionen | |
-| `webcams.txt` | Liste: Name, Quelle, Anzeigetitel | `pics.txt` + Sonderfälle im Skript |
-| `webcams.status` | wann jede Webcam zuletzt ein neues Bild lieferte (automatisch) | |
-| `index.php` | Slideshow fürs Tablet | `webcam8.php` |
-| `favorites.txt` | mit ♥ gemerkte Bilder (wird automatisch angelegt) | |
+| Datei | Zweck |
+|---|---|
+| `index.php` | Slideshow fürs Tablet |
+| `admin.php` | Verwaltung im Browser: hinzufügen (mit Download-Test), bearbeiten, ein-/ausschalten, löschen, Probleme aufräumen, Protokoll |
+| `webcam-cli.php` | Download per Cron; Import/Export, Test und Passwort auf der Kommandozeile |
+| `inc/webcam.php` | gemeinsamer Kern: Einstellungen, Datenbank, Download |
+| `webcams.txt` | Startliste für den ersten Import |
 
-## Installation
+Webcams, Status und Favoriten liegen in einer SQLite-Datenbank (`/var/lib/webcam/webcams.sqlite`).
+Sie verträgt gleichzeitige Zugriffe von Slideshow, Verwaltung und Cron-Download, braucht keinen
+Datenbankserver und besteht aus einer einzigen Datei. Als Sicherung oder zum Bearbeiten im Editor
+lässt sich alles jederzeit als Textliste exportieren und wieder importieren.
+
+## Umstieg von der Version mit bash-Skripten
 
 ```sh
-sudo apt install curl file util-linux ffmpeg     # ffmpeg nur für die Regensburg-Streams
+# 1. Pakete (php-sqlite3 und php-curl werden neu gebraucht)
+sudo apt install php-cli php-sqlite3 php-curl ffmpeg
+sudo systemctl restart apache2          # bzw. den Webserver/php-fpm, den du nutzt
+
+# 2. Aktuelle Liste sichern – sie kann seit der Installation geändert worden sein
 cd /var/www/html/webcam
-# index.php, webcam-download.sh und webcams.txt hierher kopieren
-chmod +x webcam-download.sh webcam-verwalten.sh
-mkdir -p bilder
-touch favorites.txt                                   # PHP muss Favoriten schreiben dürfen:
-sudo chown www-data: favorites.txt                    #   mit Root-Rechten
-# chmod 666 favorites.txt                             #   oder ohne sudo
-./webcam-download.sh                                  # erster Lauf, zeigt Fehlerliste
+cp webcams.txt ~/webcams-alt.txt
+
+# 3. Neue Dateien holen (git pull oder kopieren): index.php, admin.php, webcam-cli.php, inc/
+
+# 4. Datenverzeichnis anlegen; Bilder gehören künftig dem Webserver-Benutzer
+sudo mkdir -p /var/lib/webcam
+sudo chown www-data: /var/lib/webcam
+sudo chown -R www-data: bilder
+
+# 5. Liste und Favoriten übernehmen
+sudo -u www-data php webcam-cli.php import ~/webcams-alt.txt favorites.txt
+
+# 6. Cron umstellen: alten Eintrag (webcam-download.sh) mit "crontab -e" löschen, dann:
+echo '*/30 6-20 * * * www-data php /var/www/html/webcam/webcam-cli.php download >/dev/null 2>&1' \
+  | sudo tee /etc/cron.d/webcam
+
+# 7. Erster Lauf von Hand
+sudo -u www-data php webcam-cli.php download
+
+# 8. Alte Dateien entfernen
+rm -f webcam-download.sh webcam-verwalten.sh webcam-funktionen.sh webcams.status webcams.txt.bak \
+      favorites.txt bilder/titel.tsv
 ```
 
-Cron (alle 10 Minuten) – den alten Eintrag für `picsdownload2.sh` entfernen:
+Danach `http://<server>/webcam/admin.php` öffnen und beim ersten Aufruf ein Passwort festlegen.
+`/var/log/webcam-download.log` wird nicht mehr gebraucht. Das Protokoll steht jetzt in
+`/var/lib/webcam/download.log` und in der Verwaltung unter „Protokoll“.
 
-```
-*/10 * * * * /var/www/html/webcam/webcam-download.sh >> /var/log/webcam-download.log 2>&1
-```
+**Wichtig:** `webcam-cli.php` immer als `www-data` aufrufen (`sudo -u www-data php …`). Als root
+verweigert das Skript den Start. Sonst gehörten Datenbank und Bilder root, und Webserver bzw.
+Cron-Job dürften sie nicht mehr ändern.
 
-Auf dem Tablet `http://<server>/webcam/` aufrufen (statt `webcam8.php`).
-Die alten nummerierten Bilder (`10.jpg`, `11.jpg`, …) in `/var/www/html/webcam/` können gelöscht werden.
+## Verwaltung im Browser (`admin.php`)
 
-## Webcams verwalten
+* **Hinzufügen:** URL eintragen und „Testen“ drücken. Angezeigt werden eine Vorschau, Format,
+  Auflösung und Aufnahmezeit. Liefert die Adresse eine Webseite oder einen Videostream, schlägt der
+  Test die passende Einstellung vor und übernimmt sie per Klick. Der Dateiname entsteht automatisch
+  aus dem Titel. Beim Speichern wird der Download **immer** geprüft. Nur wenn er klappt, wird die
+  Webcam eingetragen, und ihr Bild erscheint sofort in der Slideshow. Bei veralteten Bildern ist
+  eine ausdrückliche Bestätigung nötig.
+* **Probleme:** Webcams mit Fehler, mit veraltetem Bild oder ohne neues Bild seit 2 Tagen,
+  die ältesten zuerst. Mit „alle auswählen“ → „Ausschalten“ oder „Löschen“ lassen sie sich in einem
+  Rutsch aufräumen.
+* **Ausgeschaltet** bleiben Webcams gespeichert und lassen sich mit „Ein“ zurückholen.
+* Suche und Gruppenfilter, „⟳ Laden“ für einen sofortigen Download, ♥ für Favoriten.
+* **Protokoll:** die letzten Download-Läufe und `download.log`. Ist der letzte Lauf länger als
+  2 Stunden her, warnt die Übersicht („Läuft der Cron-Job?“).
+* **Export** lädt alle Webcams als Textliste herunter (Sicherung).
+
+## Kommandozeile
 
 ```sh
-./webcam-verwalten.sh test URL                # nur ausprobieren
-./webcam-verwalten.sh neu NAME URL [Titel]    # testen und bei Erfolg eintragen
-./webcam-verwalten.sh defekt                  # was liefert seit 2 Tagen nichts Neues?
-./webcam-verwalten.sh aufraeumen              # defekte einzeln durchgehen: aus/entfernen/testen/behalten
-./webcam-verwalten.sh aus NAME | an NAME | entfernen NAME
+sudo -u www-data php webcam-cli.php download             # alle aktiven Webcams laden (Cron)
+sudo -u www-data php webcam-cli.php test URL             # Download testen
+sudo -u www-data php webcam-cli.php export > sicherung.txt
+sudo -u www-data php webcam-cli.php import sicherung.txt # vorhandene Namen werden übersprungen
+sudo -u www-data php webcam-cli.php passwort             # Passwort der Verwaltung neu setzen
 ```
 
-`neu` trägt nur ein, wenn sich das Bild mit genau demselben curl-Aufruf wie im echten
-Download laden lässt und wirklich ein Bild ist. Liefert die Adresse eine Webseite oder
-einen Videostream, schlägt der Test `html:` bzw. `mjpeg:` vor.
-Ausgeschaltete Webcams bleiben als `#aus DATUM …` in der Liste und lassen sich mit `an`
-zurückholen. Vor jeder Änderung wird `webcams.txt.bak` angelegt.
+Textformat: eine Webcam pro Zeile, `name  quelle  Titel`. `# --- Gruppe ---` beginnt eine
+Gruppe, `#aus DATUM …` markiert ausgeschaltete Webcams, Kommentarzeilen direkt darüber werden zur
+Notiz. Quellen mit `html:` (Bild aus Webseite) oder `mjpeg:` (Videostream) davor sind möglich,
+ebenso Platzhalter wie `{utc:%H}` für die aktuelle UTC-Stunde.
 
-`defekt` findet Webcams, die noch nie ein Bild geliefert haben (gleich nach dem ersten
-Download-Lauf), sowie tote **und** eingefrorene Webcams, die seit X Tagen kein neues
-Bild gebracht haben (`defekt 7` für eine Woche).
+## Veraltete und defekte Webcams
 
-### Veraltete Bilder
+Bei jedem Download wird die Aufnahmezeit ermittelt: aus dem `Last-Modified`-Datum des Servers,
+ersatzweise aus den EXIF-Daten. Aufnahmen, die älter als 24 Stunden sind, kommen nicht in die
+Slideshow. Ändert sich ein Bild trotz alter Zeitangabe zwischen zwei Läufen, geht nur die Uhr der
+Kamera falsch, und das Bild wird normal gezeigt. Bilder, die sich 24 Stunden nicht ändern,
+verschwinden ebenfalls aus der Slideshow. In der Slideshow zeigt „Stand“ die echte Aufnahmezeit.
 
-Manche Webcams liefern noch ein Bild, das aber seit Monaten nicht mehr aktualisiert wurde.
-Die Aufnahmezeit wird deshalb bei jedem Download ermittelt – aus dem `Last-Modified`-Datum
-des Servers, ersatzweise aus den EXIF-Daten des Bildes. Ist die Aufnahme älter als 24 Stunden
-(`MAX_ALTER_MIN`), kommt das Bild nicht in die Slideshow und die Webcam steht sofort unter
-`defekt`, z. B. „veraltet: Aufnahme vom 25.06.2026“. Ändert sich das Bild trotz alter
-Zeitangabe zwischen zwei Läufen, geht nur die Uhr der Kamera falsch – dann wird es normal
-angezeigt. In der Slideshow zeigt „Stand“ die echte Aufnahmezeit.
+## Slideshow (`index.php`)
 
-Prüfen, was ein Server meldet: `curl -sI URL | grep -i last-modified`
+* Tippen rechts/links oder Wischen: nächstes/vorheriges Bild
+* Tippen in die Mitte: Steuerung (Pause, ♥ Merken, ★ nur Favoriten, Darstellung, Neu mischen,
+  Vollbild, ⚙ Verwaltung)
+* Darstellung **Auto**: Das Bild füllt den Bildschirm, wenn dabei höchstens 10 % abgeschnitten
+  würden. Sonst wird es ganz und maximal groß gezeigt, mit unscharfem Bildhintergrund an den
+  Rändern. Alternativ fest **Ganzes Bild** oder **Füllen**.
 
-## Bedienung
+## Einstellungen
 
-* Tippen rechts / links: nächstes / vorheriges Bild, Wischen ebenso
-* Tippen in die Mitte: Steuerung (Pause, ♥ Merken, ★ nur Favoriten, Darstellung, Neu mischen, Vollbild)
-* Darstellung **Auto**: füllt den Bildschirm, wenn dabei höchstens 10 % abgeschnitten würden,
-  sonst wird das ganze Bild maximal groß gezeigt (Ränder mit unscharfem Bildhintergrund).
-  Alternativ fest **Ganzes Bild** oder **Füllen**.
-* Unten links stehen der Titel und das Alter der Aufnahme (orange ab 2 Stunden).
+Standardwerte stehen oben in `inc/webcam.php`. Eigene Werte gehören in `inc/konfig.local.php`
+(wird von Updates nicht überschrieben), z. B.:
 
-Anzeigedauer: `ANZEIGE_SEKUNDEN` in `index.php`, weitere Einstellungen im `CFG`-Block.
+```php
+<?php
+define('ANZEIGE_SEKUNDEN', 30);   // Anzeigedauer pro Bild
+define('MAX_ALTER_MIN', 720);     // Bilder schon nach 12 Stunden als veraltet behandeln
+define('DEFEKT_TAGE', 3);         // erst nach 3 Tagen ohne neues Bild unter „Probleme“
+```

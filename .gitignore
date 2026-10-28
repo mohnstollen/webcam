@@ -1,4 +1,2 @@
 bilder/
-favorites.txt
-webcams.status
-webcams.txt.bak
+inc/konfig.local.php
