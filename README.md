@@ -47,10 +47,16 @@ echo '*/30 6-20 * * * www-data php /var/www/html/webcam/webcam-cli.php download 
 # 7. Erster Lauf von Hand
 sudo -u www-data php webcam-cli.php download
 
-# 8. Alte Dateien entfernen
-rm -f webcam-download.sh webcam-verwalten.sh webcam-funktionen.sh webcams.status webcams.txt.bak \
-      favorites.txt bilder/titel.tsv
+# 8. Alte Dateien entfernen (erst, wenn die Slideshow wieder Bilder zeigt)
+cd /var/www/html/webcam
+rm -f webcam-download.sh webcam-verwalten.sh webcam-funktionen.sh webcams.status webcams.txt.bak favorites.txt
+sudo rm -f bilder/titel.tsv /var/log/webcam-download.log
+rm -f /tmp/webcams-alt.txt /tmp/favorites-alt.txt
 ```
+
+Wer stattdessen neu geklont und die alte Installation umbenannt hat (z. B. nach `webcam-alt`),
+löscht in Schritt 8 nur `bilder/titel.tsv`, das Log und die Kopien in `/tmp`, und danach das alte
+Verzeichnis komplett: `sudo rm -rf /var/www/html/webcam-alt`.
 
 Danach `http://<server>/webcam/admin.php` öffnen und beim ersten Aufruf ein Passwort festlegen.
 `/var/log/webcam-download.log` wird nicht mehr gebraucht. Das Protokoll steht jetzt in
