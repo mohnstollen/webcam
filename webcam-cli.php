@@ -85,11 +85,20 @@ switch ($befehl) {
         break;
 
     case 'import':
-        if (!isset($argv[2]) || !is_readable($argv[2])) {
-            fehler('Aufruf: php webcam-cli.php import DATEI [FAVORITEN]  (Datei lesbar?)');
+        if (!isset($argv[2])) {
+            fehler('Aufruf: php webcam-cli.php import DATEI [FAVORITEN]');
+        }
+        foreach (array_slice($argv, 2, 2) as $datei) {
+            if (!is_file($datei) && !is_readable(dirname($datei))) {
+                fehler("$datei ist für " . (function_exists('posix_geteuid') ? posix_getpwuid(posix_geteuid())['name'] : 'diesen Benutzer')
+                     . " nicht erreichbar (z. B. Home-Verzeichnis).\n       Datei vorher nach /tmp kopieren: cp $datei /tmp/ && chmod a+r /tmp/" . basename($datei));
+            }
+            if (!is_readable($datei)) {
+                fehler(is_file($datei) ? "$datei ist nicht lesbar – chmod a+r $datei" : "$datei gibt es nicht.");
+            }
         }
         $favoriten = [];
-        if (isset($argv[3]) && is_readable($argv[3])) {
+        if (isset($argv[3])) {
             foreach (file($argv[3], FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $f) {
                 $favoriten[pathinfo(trim($f), PATHINFO_FILENAME)] = true;
             }

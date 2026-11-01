@@ -23,9 +23,12 @@ lässt sich alles jederzeit als Textliste exportieren und wieder importieren.
 sudo apt install php-cli php-sqlite3 php-curl ffmpeg
 sudo systemctl restart apache2          # bzw. den Webserver/php-fpm, den du nutzt
 
-# 2. Aktuelle Liste sichern – sie kann seit der Installation geändert worden sein
+# 2. Aktuelle Liste und Favoriten sichern – nach /tmp, denn dort darf www-data sie
+#    lesen (ins Home-Verzeichnis von pi darf www-data nicht hineinschauen)
 cd /var/www/html/webcam
-cp webcams.txt ~/webcams-alt.txt
+cp webcams.txt /tmp/webcams-alt.txt
+cp favorites.txt /tmp/favorites-alt.txt      # falls vorhanden
+chmod a+r /tmp/webcams-alt.txt /tmp/favorites-alt.txt
 
 # 3. Neue Dateien holen (git pull oder kopieren): index.php, admin.php, webcam-cli.php, inc/
 
@@ -35,7 +38,7 @@ sudo chown www-data: /var/lib/webcam
 sudo chown -R www-data: bilder
 
 # 5. Liste und Favoriten übernehmen
-sudo -u www-data php webcam-cli.php import ~/webcams-alt.txt favorites.txt
+sudo -u www-data php webcam-cli.php import /tmp/webcams-alt.txt /tmp/favorites-alt.txt
 
 # 6. Cron umstellen: alten Eintrag (webcam-download.sh) mit "crontab -e" löschen, dann:
 echo '*/30 6-20 * * * www-data php /var/www/html/webcam/webcam-cli.php download >/dev/null 2>&1' \
