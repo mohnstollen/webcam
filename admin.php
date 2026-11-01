@@ -249,6 +249,14 @@ function fuss(): void
 // Datenbank verfügbar?
 // -----------------------------------------------------------------------------
 
+if ($fehlend = fehlendeErweiterungen()) {
+    kopf('Einrichtung', false);
+    echo '<div class="meldung fehler">Dem Webserver fehlen PHP-Erweiterungen.</div>'
+       . '<p>Auf dem Server installieren und den Webserver neu starten:</p>'
+       . '<pre>sudo apt install ' . h(implode(' ', $fehlend)) . "\n" . 'sudo systemctl restart apache2</pre>';
+    fuss();
+    exit;
+}
 try {
     db();
 } catch (Throwable $e) {
@@ -378,6 +386,9 @@ if ($aktion !== '') {
             weiter('admin.php#cam' . $id, ($alt ? 'Gespeichert: ' : 'Hinzugefügt: ') . $d['titel']);
             // no break
         case 'laden':
+            if (!$ids) {
+                weiter($zurueck, 'Bitte zuerst Webcams auswählen.');
+            }
             $cams = [];
             foreach ($ids as $id) {
                 if (($c = webcamPerId($id)) && $c['aktiv']) {
@@ -394,6 +405,16 @@ if ($aktion !== '') {
             // no break
         case 'aus':
         case 'an':
+        case 'loeschen':
+            if (!$ids) {
+                weiter($zurueck, 'Bitte zuerst Webcams auswählen.');
+            }
+            if ($aktion === 'loeschen') {
+                foreach ($ids as $id) {
+                    loesche($id);
+                }
+                weiter($zurueck, count($ids) . ' gelöscht.');
+            }
             foreach ($ids as $id) {
                 setzeAktiv($id, $aktion === 'an');
             }
@@ -405,12 +426,6 @@ if ($aktion !== '') {
                 db()->prepare('UPDATE webcams SET favorit = 1 - favorit WHERE id = ?')->execute([$id]);
             }
             weiter($zurueck . (count($ids) === 1 ? '#cam' . $ids[0] : ''));
-            // no break
-        case 'loeschen':
-            foreach ($ids as $id) {
-                loesche($id);
-            }
-            weiter($zurueck, count($ids) . ' gelöscht.');
             // no break
         default:
             weiter('admin.php');
@@ -661,7 +676,7 @@ if (!$lauf): ?>
     [$klasse, $text] = statusAnzeige($c);
     $bild = $c['datei'] !== null && is_file(BILD_VERZ . '/' . $c['datei']);
     $bildUrl = $bild ? BILD_URL . '/' . rawurlencode($c['datei']) . '?v=' . filemtime(BILD_VERZ . '/' . $c['datei']) : '';
-    $suche = mb_strtolower($c['titel'] . ' ' . $c['name'] . ' ' . $c['gruppe'] . ' ' . $c['quelle'] . ' ' . $c['notiz'], 'UTF-8');
+    $suche = klein($c['titel'] . ' ' . $c['name'] . ' ' . $c['gruppe'] . ' ' . $c['quelle'] . ' ' . $c['notiz']);
     ?>
   <article class="karte<?= $c['aktiv'] ? '' : ' inaktiv' ?>" id="cam<?= $c['id'] ?>" data-suche="<?= h($suche) ?>" data-gruppe="<?= h($c['gruppe']) ?>">
     <a class="vorschau" href="<?= $bild ? h($bildUrl) : h(quelleOhnePrefix($c['quelle'])) ?>" target="_blank" rel="noopener">

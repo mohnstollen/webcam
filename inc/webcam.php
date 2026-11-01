@@ -147,10 +147,29 @@ function letzterLauf(): ?array
 // Webcams anlegen, ändern, löschen
 // =============================================================================
 
+/** Kleinschreibung inkl. Umlauten – ohne die oft fehlende PHP-Erweiterung mbstring */
+function klein(string $text): string
+{
+    return strtr(strtolower($text), ['Ä' => 'ä', 'Ö' => 'ö', 'Ü' => 'ü', 'É' => 'é', 'È' => 'è', 'Á' => 'á',
+        'À' => 'à', 'Å' => 'å', 'Ø' => 'ø', 'Č' => 'č', 'Š' => 'š', 'Ž' => 'ž']);
+}
+
+/** PHP-Erweiterungen, die fehlen → Debian-Paketnamen */
+function fehlendeErweiterungen(): array
+{
+    $pakete = [];
+    foreach (['pdo_sqlite' => 'php-sqlite3', 'curl' => 'php-curl', 'fileinfo' => 'php-common'] as $ext => $paket) {
+        if (!extension_loaded($ext)) {
+            $pakete[] = $paket;
+        }
+    }
+    return array_unique($pakete);
+}
+
 /** "Görlitz – Obermarkt" → "goerlitz-obermarkt" */
 function slug(string $text): string
 {
-    $text = strtr(mb_strtolower($text, 'UTF-8'), ['ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue', 'ß' => 'ss',
+    $text = strtr(klein($text), ['ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue', 'ß' => 'ss',
         'é' => 'e', 'è' => 'e', 'á' => 'a', 'à' => 'a', 'å' => 'a', 'ø' => 'o', 'č' => 'c', 'š' => 's', 'ž' => 'z']);
     return trim((string) preg_replace('/[^a-z0-9]+/', '-', $text), '-');
 }
@@ -608,6 +627,9 @@ function speichereStatus(int $id, array $s, int $jetzt): void
 /** Lädt die angegebenen Webcams, aktualisiert Bilder und Status. Liefert id → Status. */
 function ladeWebcams(array $cams): array
 {
+    if (!$cams) {
+        return [];
+    }
     $start = time();
     $nachId = [];
     $quellen = [];

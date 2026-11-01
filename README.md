@@ -21,7 +21,8 @@ lässt sich alles jederzeit als Textliste exportieren und wieder importieren.
 ```sh
 # 1. Pakete (php-sqlite3 und php-curl werden neu gebraucht)
 sudo apt install php-cli php-sqlite3 php-curl ffmpeg
-sudo systemctl restart apache2          # bzw. den Webserver/php-fpm, den du nutzt
+sudo systemctl restart apache2          # wichtig: erst danach kennt der Webserver die neuen Pakete
+                                        # (bzw. php-fpm neu starten, je nach Webserver)
 
 # 2. Aktuelle Liste und Favoriten sichern – nach /tmp, denn dort darf www-data sie
 #    lesen (ins Home-Verzeichnis von pi darf www-data nicht hineinschauen)

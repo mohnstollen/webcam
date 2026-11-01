@@ -42,6 +42,9 @@ if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
     fehler("Bitte nicht als root ausführen, sonst gehören Datenbank und Bilder root.\n"
          . "       Stattdessen: sudo -u www-data php " . $argv[0] . ' ' . implode(' ', array_slice($argv, 1)));
 }
+if ($fehlend = fehlendeErweiterungen()) {
+    fehler('PHP-Erweiterungen fehlen. Installieren mit: sudo apt install ' . implode(' ', $fehlend));
+}
 try {
     db();
 } catch (Throwable $e) {
