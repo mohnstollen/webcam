@@ -70,7 +70,10 @@ switch ($befehl) {
         echo "Teste {$r['url']} …\n";
         if (isset($r['fehler'])) {
             echo "✘ {$r['fehler']}\n";
-            if (isset($r['vorschlag'])) {
+            if (isset($r['gefunden'])) {
+                echo "  Die Adresse ist eine Webseite, darin gefunden: {$r['gefunden']}\n";
+                echo "  → Vorschlag: diese Bild-Adresse direkt verwenden oder {$r['vorschlag']}\n";
+            } elseif (isset($r['vorschlag'])) {
                 echo "  → Vorschlag: {$r['vorschlag']}\n";
             }
             exit(1);

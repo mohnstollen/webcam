@@ -96,7 +96,7 @@ function istProblem(array $c): bool
 function testFuerAnzeige(array $r): array
 {
     $a = ['ok' => !isset($r['fehler']), 'url' => $r['url'] ?? '', 'fehler' => $r['fehler'] ?? null,
-          'vorschlag' => $r['vorschlag'] ?? null];
+          'vorschlag' => $r['vorschlag'] ?? null, 'gefunden' => $r['gefunden'] ?? null, 'typ' => $r['typ'] ?? ''];
     if ($a['ok']) {
         $a += [
             'format'   => strtoupper($r['endung']) . ", {$r['breite']}×{$r['hoehe']} Pixel, " . max(1, intdiv($r['groesse'], 1024)) . ' KB',
@@ -540,6 +540,7 @@ if ($formular !== null || $seite === 'neu' || $seite === 'bearbeiten') {
         if (r.ok) {
           ergebnis.appendChild(el('div', 'gut', '✔ Bild lässt sich laden: ' + r.format));
           ergebnis.appendChild(el('div', '', 'Aufnahmezeit: ' + r.aufnahme));
+          if (r.typ === 'html') ergebnis.appendChild(el('div', 'klein', 'Gefundenes Bild auf der Seite: ' + r.url));
           if (r.veraltet) ergebnis.appendChild(el('div', 'warn', '⚠ Das Bild ist veraltet – die Webcam ist vermutlich außer Betrieb.'));
           if (r.klein) ergebnis.appendChild(el('div', 'warn', 'Hinweis: geringe Auflösung – auf dem Tablet wird das Bild unscharf.'));
           var img = el('img'); img.src = r.vorschau; img.alt = 'Vorschau';
@@ -551,12 +552,20 @@ if ($formular !== null || $seite === 'neu' || $seite === 'bearbeiten') {
         if (r.vorschlag) {
           var m = r.vorschlag.match(/^(html|mjpeg):(.*)$/);
           var zeile = el('div', '', m[1] === 'html'
-            ? 'Die Adresse liefert eine Webseite mit einem Webcam-Bild darin. '
+            ? 'Die Adresse liefert eine Webseite mit einem Webcam-Bild darin' + (r.gefunden ? ': ' + r.gefunden : '') + '. '
             : 'Die Adresse liefert einen Videostream. ');
-          var b = el('button', '', 'Als ' + (m[1] === 'html' ? 'Webseite' : 'MJPEG-Stream') + ' übernehmen und testen');
-          b.type = 'button';
-          b.onclick = function () { f.querySelector('[name=typ][value=' + m[1] + ']').checked = true; f.url.value = m[2]; teste(); };
-          zeile.appendChild(b);
+          var uebernehmen = function (typ, url, text) {
+            var b = el('button', '', text);
+            b.type = 'button';
+            b.style.margin = '6px 8px 0 0';
+            b.onclick = function () { f.querySelector('[name=typ][value=' + typ + ']').checked = true; f.url.value = url; teste(); };
+            zeile.appendChild(el('br'));
+            zeile.appendChild(b);
+          };
+          if (r.gefunden) uebernehmen('bild', r.gefunden, 'Bild-Adresse direkt verwenden und testen');
+          uebernehmen(m[1], m[2], 'Als ' + (m[1] === 'html' ? 'Webseite' : 'MJPEG-Stream') + ' übernehmen und testen');
+          if (r.gefunden) zeile.appendChild(el('div', 'klein',
+            'Direkt: ein Download weniger. Als Webseite: funktioniert weiter, falls die Seite die Bild-Adresse ändert.'));
           ergebnis.appendChild(zeile);
         }
       }

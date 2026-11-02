@@ -320,30 +320,48 @@ function absoluteUrl(string $src, string $basis): string
     return herkunft($basis) . substr($pfad, 0, (int) strrpos($pfad, '/') + 1) . $src;
 }
 
-/** Erstes Webcam-JPG einer HTML-Seite (bevorzugt mit "cam" im Namen) */
+/**
+ * Das Webcam-Bild einer HTML-Seite finden. Jedes <img> wird bewertet:
+ *   + "cam" in Adresse, alt- oder title-Text, + Endung .jpg,
+ *   + Wörter wie download/snap/live/aktuell, − Logos, Icons, Banner, Werbung.
+ * So werden auch Bilder gefunden, die ein Skript ausliefert (z. B. src="_download.php").
+ */
 function findeBild(string $html, string $seite): ?string
 {
-    if (!preg_match_all('/<img[^>]*\ssrc\s*=\s*["\']([^"\']+)["\']/i', $html, $m)) {
+    if (!preg_match_all('/<img\b[^>]*>/i', $html, $tags)) {
         return null;
     }
-    $kandidaten = [];
-    foreach ($m[1] as $src) {
-        $src = html_entity_decode($src, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $attribut = function (string $tag, string $name): string {
+        return preg_match('/\s' . $name . '\s*=\s*(["\'])(.*?)\1/is', $tag, $m)
+            ? html_entity_decode($m[2], ENT_QUOTES | ENT_HTML5, 'UTF-8') : '';
+    };
+    $wahl = null;
+    $beste = 0;
+    foreach ($tags[0] as $tag) {
+        // Lazy-Loading: echte Adresse steht oft in data-src
+        $src = trim($attribut($tag, 'data-src') ?: $attribut($tag, 'src'));
+        if ($src === '' || stripos($src, 'data:') === 0 || preg_match('/\.(svg|gif|ico)([?#]|$)/i', $src)) {
+            continue;
+        }
+        $text = $attribut($tag, 'alt') . ' ' . $attribut($tag, 'title');
+        $punkte = 0;
+        if (preg_match('/cam/i', $src . ' ' . $text)) {
+            $punkte += 3;
+        }
         if (preg_match('/\.jpe?g([?#]|$)/i', $src)) {
-            $kandidaten[] = $src;
+            $punkte += 2;
+        }
+        if (preg_match('/download|snap|image|bild|live|current|aktuell|latest/i', $src)) {
+            $punkte += 1;
+        }
+        if (preg_match('/logo|icon|banner|anzeige|werbung|sprite|pixel|button|avatar|\bads?\b/i', $src . ' ' . $text)) {
+            $punkte -= 5;
+        }
+        if ($punkte > $beste) {
+            [$wahl, $beste] = [$src, $punkte];
         }
     }
-    if (!$kandidaten) {
-        return null;
-    }
-    $wahl = $kandidaten[0];
-    foreach ($kandidaten as $src) {
-        if (stripos($src, 'cam') !== false) {
-            $wahl = $src;
-            break;
-        }
-    }
-    return absoluteUrl($wahl, $seite);
+    return $wahl === null ? null : absoluteUrl($wahl, $seite);
 }
 
 function neuerCurl(string $url)
@@ -527,8 +545,10 @@ function pruefeBild(array $e, int $start): array
     }
     $mime = (string) (new finfo(FILEINFO_MIME_TYPE))->buffer($e['daten']);
     if (!isset(BILD_TYPEN[$mime])) {
-        if ($e['typ'] === 'bild' && strpos($mime, 'text/') === 0 && findeBild($e['daten'], $e['url']) !== null) {
+        if ($e['typ'] === 'bild' && strpos($mime, 'text/') === 0
+            && ($bild = findeBild($e['daten'], $e['url'])) !== null) {
             $e['vorschlag'] = 'html:' . $e['url'];
+            $e['gefunden'] = $bild;               // Alternative: Bild-Adresse direkt verwenden
         }
         return ['fehler' => "kein Bild ($mime)"] + $e;
     }
