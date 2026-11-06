@@ -115,6 +115,12 @@ verschwinden ebenfalls aus der Slideshow. In der Slideshow zeigt „Stand“ die
 * Darstellung **Auto**: Das Bild füllt den Bildschirm, wenn dabei höchstens 10 % abgeschnitten
   würden. Sonst wird es ganz und maximal groß gezeigt, mit unscharfem Bildhintergrund an den
   Rändern. Alternativ fest **Ganzes Bild** oder **Füllen**.
+* Keine Wiederholungen: Jedes Bild kommt pro Durchlauf genau einmal, in zufälliger Reihenfolge.
+  Beim Wechsel zum nächsten Durchlauf stehen die zuletzt gezeigten Bilder nicht am Anfang. Ein Bild
+  kommt frühestens nach `WIEDERHOLUNG_MIN` Minuten (Standard 60) wieder, höchstens aber mit einem
+  Drittel Durchlauf Abstand, damit die Reihenfolge abwechslungsreich bleibt. Bei 180 Webcams und
+  20 Sekunden pro Bild dauert ein Durchlauf eine Stunde, und dazwischen liegen mindestens
+  20 Minuten.
 
 ## Einstellungen
 
@@ -124,6 +130,7 @@ Standardwerte stehen oben in `inc/webcam.php`. Eigene Werte gehören in `inc/kon
 ```php
 <?php
 define('ANZEIGE_SEKUNDEN', 30);   // Anzeigedauer pro Bild
+define('WIEDERHOLUNG_MIN', 60);   // Bild frühestens nach 60 Minuten wieder zeigen
 define('MAX_ALTER_MIN', 720);     // Bilder schon nach 12 Stunden als veraltet behandeln
 define('DEFEKT_TAGE', 3);         // erst nach 3 Tagen ohne neues Bild unter „Probleme“
 ```

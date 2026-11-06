@@ -19,6 +19,8 @@ foreach ([
     'BILD_VERZ'        => dirname(__DIR__) . '/bilder',  // aktuelle Bilder für die Slideshow
     'BILD_URL'         => 'bilder',
     'ANZEIGE_SEKUNDEN' => 20,                             // Anzeigedauer pro Bild
+    'WIEDERHOLUNG_MIN' => 60,                             // gezeigtes Bild frühestens nach so vielen Minuten wieder
+                                                          // (höchstens ein Drittel Durchlauf, siehe index.php)
     'PARALLEL'         => 8,                              // gleichzeitige Downloads
     'TIMEOUT'          => 20,                             // Sekunden pro Download
     'MIN_BYTES'        => 2000,                           // kleinere Dateien gelten als defekt

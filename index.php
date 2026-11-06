@@ -189,6 +189,7 @@ header('Cache-Control: no-store');
 
   var CFG = {
     dauer: <?= ANZEIGE_SEKUNDEN ?> * 1000, // Anzeigedauer pro Bild
+    wiederholungMin: <?= (int) WIEDERHOLUNG_MIN ?>,             // Mindestabstand, bevor ein Bild wiederkommt
     listeAlle: 5 * 60 * 1000,             // Bilderliste neu holen
     seiteNeuNach: 6 * 3600 * 1000,        // Seite gelegentlich ganz neu laden (Speicher, Updates)
     steuerungAus: 6000,                   // Steuerung blendet sich aus
@@ -206,7 +207,9 @@ header('Cache-Control: no-store');
   var bilder = {};          // datei -> {datei, titel, zeit, url}
   var favoriten = [];
   var zeitversatz = 0;      // Serverzeit - Tabletzeit (s)
-  var zustand = { reihenfolge: [], pos: 0, nurFav: false, modus: 'auto' };
+  // reihenfolge: aktueller Durchlauf; gesehen: in diesem Durchlauf schon gezeigt;
+  // verlauf: [datei, Zeitpunkt] der zuletzt gezeigten Bilder (für den Mindestabstand)
+  var zustand = { reihenfolge: [], pos: 0, nurFav: false, modus: 'auto', gesehen: {}, verlauf: [] };
   var aktiv = 0, ladeId = 0, fehlversuche = 0, richtung = 1;
   var pausiert = false, timer = null, steuerTimer = null, meldungTimer = null;
   var angezeigt = null;     // aktuell sichtbares Bild
@@ -225,6 +228,8 @@ header('Cache-Control: no-store');
         zustand.pos = z.pos | 0;
         zustand.nurFav = !!z.nurFav;
         if (MODI[z.modus]) zustand.modus = z.modus;
+        if (z.gesehen && typeof z.gesehen === 'object') zustand.gesehen = z.gesehen;
+        if (Array.isArray(z.verlauf)) zustand.verlauf = z.verlauf;
       }
     } catch (e) {}
   }
@@ -251,14 +256,47 @@ header('Cache-Control: no-store');
     return a;
   }
 
+  // Neuer Durchlauf: jedes Bild genau einmal, zufällig gemischt. Bilder, die in den
+  // letzten CFG.wiederholungMin Minuten zu sehen waren, kommen nicht an den Anfang,
+  // sondern frühestens nach so vielen Bildern, wie in diese Zeit passen – höchstens
+  // nach einem Drittel des Durchlaufs, sonst bliebe die Reihenfolge fast immer gleich.
   function neuerZyklus() {
-    zustand.reihenfolge = mische(kandidaten());
+    var r = mische(kandidaten());
+    var sperre = r.length < 2 ? 0 : Math.min(Math.max(1, Math.floor(r.length / 3)),
+                                             Math.ceil(CFG.wiederholungMin * 60000 / CFG.dauer));
+    // "kürzlich": die zuletzt gezeigten Bilder, höchstens so viele wie die Sperre lang ist
+    var seit = Date.now() - CFG.wiederholungMin * 60000, kuerzlich = {}, anzahl = 0;
+    for (var v = zustand.verlauf.length - 1; v >= 0 && anzahl < sperre; v--) {
+      var e = zustand.verlauf[v];
+      if (e[1] <= seit) break;
+      if (!kuerzlich[e[0]]) { kuerzlich[e[0]] = true; anzahl++; }
+    }
+    for (var i = 0; i < sperre; i++) {
+      if (!kuerzlich[r[i]]) continue;
+      // mit einem zufälligen, länger nicht gezeigten Bild aus dem hinteren Teil tauschen
+      var frei = [];
+      for (var j = sperre; j < r.length; j++) if (!kuerzlich[r[j]]) frei.push(j);
+      if (!frei.length) break;
+      var k = frei[Math.floor(Math.random() * frei.length)], t = r[i];
+      r[i] = r[k]; r[k] = t;
+    }
+    zustand.reihenfolge = r;
     zustand.pos = 0;
+    zustand.gesehen = {};
     merke();
+  }
+
+  function notiereAnzeige(datei) {
+    zustand.gesehen[datei] = true;
+    var v = zustand.verlauf;
+    if (!v.length || v[v.length - 1][0] !== datei) v.push([datei, Date.now()]);
+    if (v.length > 500) v.splice(0, v.length - 500);
   }
 
   // Reihenfolge an eine geänderte Liste anpassen, ohne den Durchlauf neu zu beginnen:
   // verschwundene Bilder raus, neue zufällig in den noch ausstehenden Teil einfügen.
+  // Bilder, die in diesem Durchlauf schon zu sehen waren (z. B. nach kurzem Ausfall
+  // wieder da), kommen erst im nächsten Durchlauf wieder.
   function abgleichen() {
     var erlaubt = {}, drin = {};
     kandidaten().forEach(function (f) { erlaubt[f] = true; });
@@ -272,7 +310,7 @@ header('Cache-Control: no-store');
     if (pos < 0) pos = Math.min(zustand.pos, r.length - 1);
     if (pos < 0) pos = 0;
     Object.keys(erlaubt).forEach(function (f) {
-      if (drin[f]) return;
+      if (drin[f] || zustand.gesehen[f]) return;
       var p = pos + 1 + Math.floor(Math.random() * (r.length - pos));
       r.splice(Math.min(p, r.length), 0, f);
     });
@@ -319,6 +357,7 @@ header('Cache-Control: no-store');
       ebenen[aktiv].el.classList.remove('aktiv');
       aktiv = 1 - aktiv;
       angezeigt = b;
+      notiereAnzeige(b.datei);
       beschrifte();
       merke();
       starteTimer();
